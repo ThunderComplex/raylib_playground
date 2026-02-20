@@ -1,0 +1,36 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build Game",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}/build.ps1"
+            ],
+            "problemMatcher": "$msCompile",
+        },
+        {
+            "label": "Run Game",
+            "type": "shell",
+            "command": "${workspaceFolder}/build/game.exe",
+            "dependsOn": "Build Game",
+            "problemMatcher": []
+        },
+        {
+            "label": "Build & Run Game",
+            "dependsOn": [
+                "Run Game"
+            ],
+            "dependsOrder": "sequence",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}
