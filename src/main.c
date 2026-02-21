@@ -1,139 +1,74 @@
-/*******************************************************************************************
- *
- *   raylib [shapes] example - starfield effect
- *
- *   Example complexity rating: [★★☆☆] 2/4
- *
- *   Example originally created with raylib 5.5, last time updated with raylib 5.6-dev
- *
- *   Example contributed by JP Mortiboys (@themushroompirates) and reviewed by Ramon Santamaria (@raysan5)
- *
- *   Example licensed under an unmodified zlib/libpng license, which is an OSI-certified,
- *   BSD-like license that allows static linking with closed source software
- *
- *   Copyright (c) 2025 JP Mortiboys (@themushroompirates)
- *
- ********************************************************************************************/
-
+#define CLAY_IMPLEMENTATION
+#include "clay.h"
+#include "clay_raylib_renderer.c"
 #include "raylib.h"
+#include "raymath.h"
 
-#include "raymath.h" // Required for: Lerp()
+void HandleClayErrors(Clay_ErrorData errorData)
+{
+    printf("%s\n", errorData.errorText.chars);
+}
 
-#define STAR_COUNT 800
+// Example measure text function
+static inline Clay_Dimensions MeasureTextClay(Clay_StringSlice text, Clay_TextElementConfig* config, uintptr_t userData)
+{
+    // Clay_TextElementConfig contains members such as fontId, fontSize, letterSpacing etc
+    // Note: Clay_String->chars is not guaranteed to be null terminated
+    return (Clay_Dimensions) {
+        .width = text.length * 12, // <- this will only work for monospace fonts, see the renderers/ directory for more advanced text measurement
+        .height = config->fontSize
+    };
+}
 
-//------------------------------------------------------------------------------------
-// Program main entry point
-//------------------------------------------------------------------------------------
 int main(void)
 {
-    // Initialization
-    //--------------------------------------------------------------------------------------
     const int screenWidth = 1000;
     const int screenHeight = 800;
 
-    InitWindow(screenWidth, screenHeight, "raylib [shapes] example - starfield effect");
+    uint64_t clayRequiredMemory = Clay_MinMemorySize();
+    Clay_Arena clayMemory = Clay_CreateArenaWithCapacityAndMemory(clayRequiredMemory, malloc(clayRequiredMemory));
+    Clay_Dimensions dimensions = { .width = screenWidth, .height = screenHeight };
+    Clay_Initialize(clayMemory, dimensions, (Clay_ErrorHandler) { HandleClayErrors });
+    Clay_Raylib_Initialize(
+        screenWidth,
+        screenHeight,
+        "raylib + clay",
+        FLAG_WINDOW_RESIZABLE);
 
     Color bgColor = ColorLerp(DARKBLUE, BLACK, 0.69f);
 
-    // Speed at which we fly forward
-    float speed = 10.0f / 20.0f;
+    SetTargetFPS(60);
+    Font defaultFont = GetFontDefault();
+    Clay_SetMeasureTextFunction(MeasureTextClay, &defaultFont);
 
-    // We're either drawing lines or circles
-    bool drawLines = true;
+    while (!WindowShouldClose()) {
+        Clay_BeginLayout();
 
-    Vector3 stars[STAR_COUNT] = { 0 };
-    Vector2 starsScreenPos[STAR_COUNT] = { 0 };
+        CLAY(CLAY_ID("OuterContainer"), { .layout = { .sizing = { CLAY_SIZING_GROW(0), CLAY_SIZING_GROW(0) }, .padding = CLAY_PADDING_ALL(16), .childGap = 16 }, .backgroundColor = { 250, 250, 200, 255 } })
+        {
+            CLAY(CLAY_ID("SideBar"), { .layout = { .layoutDirection = CLAY_TOP_TO_BOTTOM, .sizing = { .width = CLAY_SIZING_FIXED(300), .height = CLAY_SIZING_GROW(0) }, .padding = CLAY_PADDING_ALL(16), .childGap = 16 }, .backgroundColor = { 255, 64, 64, 255 } })
+            {
+                CLAY(CLAY_ID("ProfilePictureOuter"), { .layout = { .sizing = { .width = CLAY_SIZING_GROW(0) }, .padding = CLAY_PADDING_ALL(16), .childGap = 16, .childAlignment = { .y = CLAY_ALIGN_Y_CENTER } }, .backgroundColor = { 64, 200, 64, 255 } })
+                {
+                    CLAY(CLAY_ID("ProfilePicture"), { .layout = { .sizing = { .width = CLAY_SIZING_FIXED(60), .height = CLAY_SIZING_FIXED(60) } } }) { }
+                    CLAY_TEXT(CLAY_STRING("Clay - UI Library"), CLAY_TEXT_CONFIG({ .fontSize = 24, .textColor = { 255, 255, 255, 255 } }));
+                }
 
-    // Setup the stars with a random position
-    for (int i = 0; i < STAR_COUNT; i++) {
-        stars[i].x = GetRandomValue(-screenWidth * 0.5f, screenWidth * 0.5f);
-        stars[i].y = GetRandomValue(-screenHeight * 0.5f, screenHeight * 0.5f);
-        stars[i].z = 1.0f;
-    }
-
-    SetTargetFPS(60); // Set our game to run at 60 frames-per-second
-    //--------------------------------------------------------------------------------------
-
-    // Main game loop
-    while (!WindowShouldClose()) // Detect window close button or ESC key
-    {
-        // Update
-        //----------------------------------------------------------------------------------
-        // Change speed based on mouse
-        float mouseMove = GetMouseWheelMove();
-        if ((int)mouseMove != 0)
-            speed += 2.0f * mouseMove / 20.0f;
-        if (speed <= 0.0f)
-            speed = 0.1f;
-
-        // Toggle lines / points with space bar
-        if (IsKeyPressed(KEY_SPACE))
-            drawLines = !drawLines;
-
-        float dt = GetFrameTime();
-        for (int i = 0; i < STAR_COUNT; i++) {
-            // Update star's timer
-            stars[i].z -= dt * speed;
-
-            // Calculate the screen position
-            starsScreenPos[i] = (Vector2) {
-                screenWidth * 0.5f + stars[i].x / stars[i].z,
-                screenHeight * 0.5f + stars[i].y / stars[i].z,
-            };
-
-            // If the star is too old, or offscreen, it dies and we make a new random one
-            if ((stars[i].z < 0.0f) || (starsScreenPos[i].x < 0) || (starsScreenPos[i].y < 0.0f) || (starsScreenPos[i].x > screenWidth) || (starsScreenPos[i].y > screenHeight)) {
-                stars[i].x = GetRandomValue(-screenWidth * 0.5f, screenWidth * 0.5f);
-                stars[i].y = GetRandomValue(-screenHeight * 0.5f, screenHeight * 0.5f);
-                stars[i].z = 1.0f;
+                CLAY(CLAY_ID("MainContent"), { .layout = { .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0) } }, .backgroundColor = { 255, 64, 64 } }) { }
             }
         }
-        //----------------------------------------------------------------------------------
+        Clay_RenderCommandArray renderCommands = Clay_EndLayout();
 
-        // Draw
-        //----------------------------------------------------------------------------------
         BeginDrawing();
 
         ClearBackground(bgColor);
 
-        for (int i = 0; i < STAR_COUNT; i++) {
-            if (drawLines) {
-                // Get the time a little while ago for this star, but clamp it
-                float t = Clamp(stars[i].z + (speed * 2) / 32.0f, 0.0f, 1.0f);
-
-                // If it's different enough from the current time, we proceed
-                if ((t - stars[i].z) > 1e-3) {
-                    // Calculate the screen position of the old point
-                    Vector2 startPos = (Vector2) {
-                        screenWidth * 0.5f + stars[i].x / t,
-                        screenHeight * 0.5f + stars[i].y / t,
-                    };
-
-                    // Draw a line connecting the old point to the current point
-                    DrawLineV(startPos, starsScreenPos[i], RAYWHITE);
-                }
-            } else {
-                // Make the radius grow as the star ages
-                float radius = Lerp(stars[i].z, 1.0f, 5.0f);
-
-                // Draw the circle
-                DrawCircleV(starsScreenPos[i], radius, RAYWHITE);
-            }
-        }
-
-        DrawText(TextFormat("[MOUSE WHEEL] Current Speed: %.0f", 20.0f * speed / 2.0f), 10, 40, 20, RAYWHITE);
-        DrawText(TextFormat("[SPACE] Current draw mode: %s", drawLines ? "Lines" : "Circles"), 10, 70, 20, RAYWHITE);
-
-        DrawFPS(10, 10);
+        Clay_Raylib_Render(renderCommands, &defaultFont);
 
         EndDrawing();
-        //----------------------------------------------------------------------------------
     }
 
-    // De-Initialization
-    //--------------------------------------------------------------------------------------
-    CloseWindow(); // Close window and OpenGL context
-    //--------------------------------------------------------------------------------------
+    Clay_Raylib_Close();
 
     return 0;
 }
