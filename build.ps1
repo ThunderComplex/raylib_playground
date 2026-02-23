@@ -15,9 +15,9 @@ function Import-VsDevEnvironment {
 Import-VsDevEnvironment
 
 if ($args.count -eq 1) {
-    cl /O2 /EHs /GA /Zi /MD /I "./dep/raylib/build_rgfw/raylib/include" "src/$($args[0]).c" /Fe:"build/$($args[0]).exe" /link /LIBPATH:"./dep/raylib/build_rgfw/raylib/RelWithDebInfo" raylib.lib opengl32.lib gdi32.lib winmm.lib user32.lib shell32.lib kernel32.lib
+    cl /O2 /EHs /GA /Zi /MD /I "./dep/" /I "./dep/raylib/build_rgfw/raylib/include" "src/$($args[0]).c" /Fe:"build/$($args[0]).exe" /link /LIBPATH:"./dep/raylib/build_rgfw/raylib/RelWithDebInfo" raylib.lib opengl32.lib gdi32.lib winmm.lib user32.lib shell32.lib kernel32.lib
 } else {
-    cl /O2 /EHs /GA /Zi /MD /I "./dep/raylib/build_rgfw/raylib/include" "src/main.c" /Fe:"build/game.exe" /link /LIBPATH:"./dep/raylib/build_rgfw/raylib/RelWithDebInfo" raylib.lib opengl32.lib gdi32.lib winmm.lib user32.lib shell32.lib kernel32.lib
+    cl /O2 /EHs /GA /Zi /MD /I "./dep/" /I "./dep/raylib/build_rgfw/raylib/include" "src/main.c" /Fe:"build/game.exe" /link /LIBPATH:"./dep/raylib/build_rgfw/raylib/RelWithDebInfo" raylib.lib opengl32.lib gdi32.lib winmm.lib user32.lib shell32.lib kernel32.lib
 }
 
 # MSVC - GLFW backend

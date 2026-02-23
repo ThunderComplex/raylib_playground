@@ -1,5 +1,8 @@
 /build/*
 !/build/.gitkeep
-/dep
+/dep/*
+!/dep/*.h
+!/dep/*.c
+
 *.obj
 *.pdb
