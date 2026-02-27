@@ -20,6 +20,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <CopyFileToFolders Include="dep\raylib-master\projects\VS2022\build\raylib\bin\x64\Release.DLL\raylib.dll" />
+    <CopyFileToFolders Include="build\raylib\bin\x64\Release.DLL\raylib.dll" />
   </ItemGroup>
 </Project>
