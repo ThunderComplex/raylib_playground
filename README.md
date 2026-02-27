@@ -6,12 +6,6 @@
 
 BYO Raylib  
 MSVC with RGFW is a **MUST** (ok technically the backend doesn't matter but GLFW is really slow on startup)
-Compile for x64 and chose RelWithDebInfo
+Compile for x64 and chose RelWithDebInfo / Release.DLL  
 
-## Usage
-
-Run the build.ps1 script either without arguments or with one argument determining the source file to be built (without the .c extension).  
-
-Edit build.ps1 to your needs or install MSVC in the same location as I do  
-
-Technically works with GCC too but it's funnier this way.  
+Use the raylib included VS2022 project to build  

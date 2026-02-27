@@ -1,0 +1,10 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+  </Configurations>
+  <Project Path="dep/raylib-master/projects/VS2022/raylib/raylib.vcxproj" Id="e89d61ac-55de-4482-afd4-df7242ebc859">
+    <BuildType Solution="Debug|*" Project="Debug.DLL" />
+    <BuildType Solution="Release|*" Project="Release.DLL" />
+  </Project>
+  <Project Path="Raylib-Game1.vcxproj" Id="cb759482-9bea-407a-8d0b-82cb2b511c65" />
+</Solution>
