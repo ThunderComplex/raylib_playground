@@ -6160,7 +6160,7 @@ void GuiLoadStyle(const char* fileName)
                 case 'p': {
                     // Style property: p <control_id> <property_id> <property_value> <property_name>
 
-                    sscanf(buffer, "p %d %d 0x%x", &controlId, &propertyId, &propertyValue);
+                    sscanf_s(buffer, "p %d %d 0x%x", &controlId, &propertyId, &propertyValue);
                     GuiSetStyle(controlId, propertyId, (int)propertyValue);
 
                 } break;
@@ -6170,7 +6170,7 @@ void GuiLoadStyle(const char* fileName)
                     int fontSize = 0;
                     char charmapFileName[256] = { 0 };
                     char fontFileName[256] = { 0 };
-                    sscanf(buffer, "f %d %s %[^\r\n]s", &fontSize, charmapFileName, fontFileName);
+                    sscanf_s(buffer, "f %d %s %[^\r\n]s", &fontSize, charmapFileName, fontFileName);
 
                     Font font = { 0 };
                     int* codepoints = NULL;
@@ -6221,7 +6221,7 @@ void GuiLoadStyle(const char* fileName)
     }
 
     if (tryBinary) {
-        rgsFile = fopen(fileName, "rb");
+        fopen_s(rgsFile, fileName, "rb");
 
         if (rgsFile != NULL) {
             fseek(rgsFile, 0, SEEK_END);
