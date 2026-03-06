@@ -6,28 +6,85 @@
 #include <stdio.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <malloc.h>
+#include <string.h>
+#include <stdlib.h>
 
-#define PLAYER_SIZE 80
-#define INVENTORY_SIZE 16
+#define GRID_SIZE 80
+#define INVENTORY_SIZE 4
 #define WORLD_ITEM_COUNT 256
 #define ITEM_WORLD_SIZE 80
+#define ITEM_DEFS_COUNT 64
 
 typedef enum {
     ITEM_TYPE_NONE = 1,
+    ITEM_TYPE_AMMO,
     ITEM_TYPE_EQUIPPABLE,
     ITEM_TYPE_USABLE,
     ITEM_TYPE_GUN
 } ItemType;
 
+typedef struct Container {
+    uint64_t id;
+    char name[256];
+} Container;
+
 typedef struct Item {
     uint64_t id;
-    char* name;
-    ItemType itemType;
+    char name[256];
+    ItemType item_type;
+    Container* parent_container;
     Rectangle world_position;
+    int stack_size;
+    int max_stack;
 } Item;
 
+static Item ItemDefs[ITEM_DEFS_COUNT];
 static Item Inventory[INVENTORY_SIZE];
 static Item WorldItems[WORLD_ITEM_COUNT];
+
+void RemoveInventoryItem(int id)
+{
+    Inventory[id].id = 0;
+    return;
+
+    /*for (size_t i = 0; i < INVENTORY_SIZE; i++)
+    {
+        Item inventoryItem = Inventory[i];
+
+        if (inventoryItem.id != 0) {
+            continue;
+        }
+
+        Inventory[i] = item;
+    }*/
+}
+
+bool AddInventoryItem(Item item)
+{
+    for (size_t i = 0; i < INVENTORY_SIZE; i++)
+    {
+        Item inventoryItem = Inventory[i];
+
+        // Adding existing item?
+        if (inventoryItem.id == item.id) {
+            if (inventoryItem.max_stack >= inventoryItem.stack_size + item.stack_size) {
+                Inventory[i].stack_size += item.stack_size;
+
+                return true;
+            }
+        }
+        // Not empty
+        else if (inventoryItem.id != 0) {
+            continue;
+        }
+
+        Inventory[i] = item;
+        return true;
+    }
+
+    return false;
+}
 
 void DrawInventory(int offsetX, int width, int height)
 {
@@ -48,18 +105,16 @@ void DrawInventory(int offsetX, int width, int height)
         if (inventoryItem.id == 0) {
             continue;
         }
-        
-        // float button_x = offsetX + margin_x + (((margin_x + (int)ceil(button_width)) * i) % (width - margin_x - (int)ceil(button_width)));
-        // float button_x = offsetX + margin_x + (((button_width + margin_x) * i) / (width + margin_x + button_width));    
-        // float button_y = (button_height + margin_y) * floor((offsetX + margin_x + (((margin_x + ceil(button_width)) * (i + 1)))) / width);
-        // float button_offset_x = (offsetX + ((int)button_width * (i + 1))) % width;
-        // float button_offset_y = (((offsetX + ((int)button_width * i)) / width) - 1) * (20 + button_height);
 
         if (GuiButton((Rectangle) { button_x, button_y, button_width, button_height }, inventoryItem.name))
         {
-             printf("Item: %d -> %s\n", inventoryItem.id, inventoryItem.name);
-             printf("x: %f, y: %f\n", button_x, button_y);
+            RemoveInventoryItem(i);
         }
+
+        const char* stack_size_text = calloc(256, sizeof(char));
+        sprintf_s(stack_size_text, 256, "%d", inventoryItem.stack_size);
+        DrawText(stack_size_text, button_x + 10, button_y + 10, 14, RED);
+        free(stack_size_text);
 
         button_x += button_width + margin_x;
 
@@ -70,44 +125,45 @@ void DrawInventory(int offsetX, int width, int height)
     }
 }
 
-bool AddInventoryItem(Item item)
-{
-    for (size_t i = 0; i < INVENTORY_SIZE; i++)
-    {
-        Item inventoryItem = Inventory[i];
-
-        if (inventoryItem.id != 0) {
-            continue;
-        }
-
-        Inventory[i] = item;
-        return true;
-    }
-
-    return false;
-}
-
 void SetupInitialItems()
 {
-    for (int i = 1; i < 16; i++)
-    {
-        char* buffer = calloc(10, sizeof(char));
+    ItemDefs[0] = (Item){
+        .id = 1,
+        .name = "SMG",
+        .item_type = ITEM_TYPE_GUN,
+        .world_position = (Rectangle) {2, 0, ITEM_WORLD_SIZE, ITEM_WORLD_SIZE},
+        .stack_size = 1,
+        .max_stack = 1,
+        .parent_container = NULL,
+    };
 
-        if (buffer == NULL) {
-            printf("Unrecoverable error!");
-            exit(-1);
-        }
+    ItemDefs[1] = (Item){
+        .id = 2,
+        .name = "SMG Ammo",
+        .item_type = ITEM_TYPE_AMMO,
+        .world_position = (Rectangle) {4, 0, ITEM_WORLD_SIZE, ITEM_WORLD_SIZE},
+        .stack_size = 4,
+        .max_stack = 16,
+        .parent_container = NULL,
+    };
+}
 
-        sprintf_s(buffer, 10, "Item %d", i);
+void SpawnItemsInWorld()
+{
+    WorldItems[0] = ItemDefs[0];
+    WorldItems[0].world_position = (Rectangle){ 2 * ITEM_WORLD_SIZE, 0, ITEM_WORLD_SIZE, ITEM_WORLD_SIZE };
 
-        WorldItems[i] = (Item){
-            .id = i,
-            .name = buffer,
-            .itemType = ITEM_TYPE_EQUIPPABLE,
-            .world_position = (Rectangle) {i * 2 * ITEM_WORLD_SIZE, 80, ITEM_WORLD_SIZE, ITEM_WORLD_SIZE},
-        };
-        // free(buffer);
-    }
+    WorldItems[1] = ItemDefs[1];
+    WorldItems[1].world_position = (Rectangle){ 4 * ITEM_WORLD_SIZE, 0, ITEM_WORLD_SIZE, ITEM_WORLD_SIZE };
+
+    WorldItems[2] = ItemDefs[1];
+    WorldItems[2].world_position = (Rectangle){ 6 * ITEM_WORLD_SIZE, 0, ITEM_WORLD_SIZE, ITEM_WORLD_SIZE };
+
+    WorldItems[3] = ItemDefs[1];
+    WorldItems[3].world_position = (Rectangle){ 8 * ITEM_WORLD_SIZE, 0, ITEM_WORLD_SIZE, ITEM_WORLD_SIZE };
+
+    WorldItems[4] = ItemDefs[1];
+    WorldItems[4].world_position = (Rectangle){ 10 * ITEM_WORLD_SIZE, 0, ITEM_WORLD_SIZE, ITEM_WORLD_SIZE };
 }
 
 void DrawWorldItems()
@@ -135,8 +191,9 @@ void PlayerWorldItemCollision(Rectangle player)
         }
 
         if (CheckCollisionRecs(player, item.world_position)) {
-            AddInventoryItem(item);
-            WorldItems[i].id = 0;
+            if (AddInventoryItem(item)) {
+                WorldItems[i].id = 0;
+            }
         }
     }
 }
@@ -149,7 +206,7 @@ int main(void)
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(screenWidth, screenHeight, "Game");
 
-    Rectangle player = { 240, 240, PLAYER_SIZE, PLAYER_SIZE };
+    Rectangle player = { 240, 240, GRID_SIZE, GRID_SIZE };
 
     Camera2D camera1 = { 0 };
     camera1.target = (Vector2) { player.x, player.y };
@@ -164,6 +221,7 @@ int main(void)
     SetTargetFPS(60);
 
     SetupInitialItems();
+    SpawnItemsInWorld();
 
     while (!WindowShouldClose()) {
         if (IsWindowResized()) {
@@ -179,13 +237,13 @@ int main(void)
         //
 
         if (IsKeyPressed(KEY_S))
-            player.y += PLAYER_SIZE;
+            player.y += GRID_SIZE;
         else if (IsKeyPressed(KEY_W))
-            player.y -= PLAYER_SIZE;
+            player.y -= GRID_SIZE;
         if (IsKeyPressed(KEY_D))
-            player.x += PLAYER_SIZE;
+            player.x += GRID_SIZE;
         else if (IsKeyPressed(KEY_A))
-            player.x -= PLAYER_SIZE;
+            player.x -= GRID_SIZE;
 
 
         camera1.target = (Vector2) { player.x, player.y };
@@ -206,17 +264,17 @@ int main(void)
 
         BeginMode2D(camera1);
 
-        for (int i = 0; i < screenWidth / PLAYER_SIZE + 1; i++) {
-            DrawLineV((Vector2) { (float)PLAYER_SIZE * i, 0 }, (Vector2) { (float)PLAYER_SIZE * i, (float)screenHeight }, LIGHTGRAY);
+        for (int i = 0; i < screenWidth / GRID_SIZE + 1; i++) {
+            DrawLineV((Vector2) { (float)GRID_SIZE * i, 0 }, (Vector2) { (float)GRID_SIZE * i, (float)screenHeight }, LIGHTGRAY);
         }
 
-        for (int i = 0; i < screenHeight / PLAYER_SIZE + 1; i++) {
-            DrawLineV((Vector2) { 0, (float)PLAYER_SIZE * i }, (Vector2) { (float)screenWidth, (float)PLAYER_SIZE * i }, LIGHTGRAY);
+        for (int i = 0; i < screenHeight / GRID_SIZE + 1; i++) {
+            DrawLineV((Vector2) { 0, (float)GRID_SIZE * i }, (Vector2) { (float)screenWidth, (float)GRID_SIZE * i }, LIGHTGRAY);
         }
 
-        for (int i = 0; i < screenWidth / PLAYER_SIZE; i++) {
-            for (int j = 0; j < screenHeight / PLAYER_SIZE; j++) {
-                DrawText(TextFormat("[%i,%i]", i, j), 10 + PLAYER_SIZE * i, 15 + PLAYER_SIZE * j, 10, LIGHTGRAY);
+        for (int i = 0; i < screenWidth / GRID_SIZE; i++) {
+            for (int j = 0; j < screenHeight / GRID_SIZE; j++) {
+                DrawText(TextFormat("[%i,%i]", i, j), 10 + GRID_SIZE * i, 15 + GRID_SIZE * j, 10, LIGHTGRAY);
             }
         }
 
