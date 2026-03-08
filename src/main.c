@@ -15,6 +15,7 @@
 #define WORLD_ITEM_COUNT 256
 #define ITEM_WORLD_SIZE 80
 #define ITEM_DEFS_COUNT 64
+#define MAX_EQUIPPED_ITEMS 10
 
 typedef enum {
     ITEM_TYPE_NONE = 1,
@@ -42,6 +43,23 @@ typedef struct Item {
 static Item ItemDefs[ITEM_DEFS_COUNT];
 static Item Inventory[INVENTORY_SIZE];
 static Item WorldItems[WORLD_ITEM_COUNT];
+static Item EquippedItems[MAX_EQUIPPED_ITEMS];
+
+static Font TextFont;
+
+void* calloc_or_die(size_t count, size_t size)
+{
+    void* data = calloc(count, size);
+
+    if (data == 0)
+    {
+        printf("Could not allocate memory, recovery impossible. Exiting...");
+        CloseWindow();
+        exit(-1);
+    }
+
+    return data;
+}
 
 void RemoveInventoryItem(int id)
 {
@@ -67,15 +85,22 @@ bool AddInventoryItem(Item item)
         Item inventoryItem = Inventory[i];
 
         // Adding existing item?
-        if (inventoryItem.id == item.id) {
-            if (inventoryItem.max_stack >= inventoryItem.stack_size + item.stack_size) {
+        if (inventoryItem.id == item.id)
+        {
+            if (inventoryItem.max_stack >= inventoryItem.stack_size + item.stack_size)
+            {
                 Inventory[i].stack_size += item.stack_size;
 
                 return true;
             }
+            else
+            {
+                return false;
+            }
         }
         // Not empty
-        else if (inventoryItem.id != 0) {
+        else if (inventoryItem.id != 0)
+        {
             continue;
         }
 
@@ -86,10 +111,32 @@ bool AddInventoryItem(Item item)
     return false;
 }
 
+bool EquipItem(Item item)
+{
+    for (size_t i = 0; i < MAX_EQUIPPED_ITEMS; i++)
+    {
+        Item equippedItem = EquippedItems[i];
+
+        if (equippedItem.id != 0)
+        {
+            continue;
+        }
+
+        EquippedItems[i] = item;
+        return true;
+    }
+
+    return false;
+}
+
+void UnequipItem(int id)
+{
+    EquippedItems[id].id = 0;
+}
+
 void DrawInventory(int offsetX, int width, int height)
 {
     DrawRectangle(offsetX + 0, 0, width, height / 2, (Color) { 64, 64, 64, 255 });
-    DrawRectangle(offsetX + 0, height / 2, width, height / 2, (Color) { 32, 32, 40, 255 });
 
     int margin_x = 20;
     int margin_y = 20;
@@ -102,19 +149,59 @@ void DrawInventory(int offsetX, int width, int height)
     {
         Item inventoryItem = Inventory[i];
 
-        if (inventoryItem.id == 0) {
+        if (inventoryItem.id == 0)
+        {
             continue;
         }
 
         if (GuiButton((Rectangle) { button_x, button_y, button_width, button_height }, inventoryItem.name))
         {
-            RemoveInventoryItem(i);
+            if (inventoryItem.item_type == ITEM_TYPE_GUN)
+            {
+                RemoveInventoryItem(i);
+                EquipItem(inventoryItem);
+            }
+            //RemoveInventoryItem(i);
         }
 
-        const char* stack_size_text = calloc(256, sizeof(char));
+        const char* stack_size_text = calloc_or_die(256, sizeof(char));
         sprintf_s(stack_size_text, 256, "%d", inventoryItem.stack_size);
-        DrawText(stack_size_text, button_x + 10, button_y + 10, 14, RED);
+        DrawTextEx(TextFont, stack_size_text, (Vector2) { button_x + 10, button_y + 25 }, 30, 1.2, RED);
         free(stack_size_text);
+
+        button_x += button_width + margin_x;
+
+        if (button_x + margin_x >= offsetX + width - button_width) {
+            button_x = offsetX + margin_x;
+            button_y += button_height + margin_y;
+        }
+    }
+}
+
+void DrawEquipment(int offsetX, int width, int height)
+{
+    DrawRectangle(offsetX + 0, height / 2, width, height / 2, (Color) { 32, 32, 40, 255 });
+
+    int margin_x = 20;
+    int margin_y = 20;
+    float button_width = 100;
+    float button_height = 50;
+    float button_x = offsetX + margin_x;
+    float button_y = (height / 2) + margin_y;
+
+    for (size_t i = 0; i < MAX_EQUIPPED_ITEMS; i++)
+    {
+        Item equippedItem = EquippedItems[i];
+
+        if (equippedItem.id == 0)
+        {
+            continue;
+        }
+
+        if (GuiButton((Rectangle) { button_x, button_y, button_width, button_height }, equippedItem.name))
+        {
+            printf("Pew\n");
+        }
 
         button_x += button_width + margin_x;
 
@@ -151,19 +238,34 @@ void SetupInitialItems()
 void SpawnItemsInWorld()
 {
     WorldItems[0] = ItemDefs[0];
-    WorldItems[0].world_position = (Rectangle){ 2 * ITEM_WORLD_SIZE, 0, ITEM_WORLD_SIZE, ITEM_WORLD_SIZE };
+    WorldItems[0].world_position = (Rectangle){ 2 * ITEM_WORLD_SIZE, 2 * ITEM_WORLD_SIZE, ITEM_WORLD_SIZE, ITEM_WORLD_SIZE };
 
     WorldItems[1] = ItemDefs[1];
-    WorldItems[1].world_position = (Rectangle){ 4 * ITEM_WORLD_SIZE, 0, ITEM_WORLD_SIZE, ITEM_WORLD_SIZE };
+    WorldItems[1].world_position = (Rectangle){ 4 * ITEM_WORLD_SIZE, 2 * ITEM_WORLD_SIZE, ITEM_WORLD_SIZE, ITEM_WORLD_SIZE };
 
     WorldItems[2] = ItemDefs[1];
-    WorldItems[2].world_position = (Rectangle){ 6 * ITEM_WORLD_SIZE, 0, ITEM_WORLD_SIZE, ITEM_WORLD_SIZE };
+    WorldItems[2].world_position = (Rectangle){ 6 * ITEM_WORLD_SIZE, 2 * ITEM_WORLD_SIZE, ITEM_WORLD_SIZE, ITEM_WORLD_SIZE };
 
     WorldItems[3] = ItemDefs[1];
-    WorldItems[3].world_position = (Rectangle){ 8 * ITEM_WORLD_SIZE, 0, ITEM_WORLD_SIZE, ITEM_WORLD_SIZE };
+    WorldItems[3].world_position = (Rectangle){ 8 * ITEM_WORLD_SIZE, 2 * ITEM_WORLD_SIZE, ITEM_WORLD_SIZE, ITEM_WORLD_SIZE };
 
     WorldItems[4] = ItemDefs[1];
-    WorldItems[4].world_position = (Rectangle){ 10 * ITEM_WORLD_SIZE, 0, ITEM_WORLD_SIZE, ITEM_WORLD_SIZE };
+    WorldItems[4].world_position = (Rectangle){ 10 * ITEM_WORLD_SIZE, 2 * ITEM_WORLD_SIZE, ITEM_WORLD_SIZE, ITEM_WORLD_SIZE };
+
+    WorldItems[5] = ItemDefs[0];
+    WorldItems[5].world_position = (Rectangle){ 2 * ITEM_WORLD_SIZE, 4 * ITEM_WORLD_SIZE, ITEM_WORLD_SIZE, ITEM_WORLD_SIZE };
+
+    WorldItems[6] = ItemDefs[0];
+    WorldItems[6].world_position = (Rectangle){ 2 * ITEM_WORLD_SIZE, 6 * ITEM_WORLD_SIZE, ITEM_WORLD_SIZE, ITEM_WORLD_SIZE };
+
+    WorldItems[7] = ItemDefs[0];
+    WorldItems[7].world_position = (Rectangle){ 2 * ITEM_WORLD_SIZE, 8 * ITEM_WORLD_SIZE, ITEM_WORLD_SIZE, ITEM_WORLD_SIZE };
+
+    WorldItems[8] = ItemDefs[0];
+    WorldItems[8].world_position = (Rectangle){ 2 * ITEM_WORLD_SIZE, 10 * ITEM_WORLD_SIZE, ITEM_WORLD_SIZE, ITEM_WORLD_SIZE };
+
+    WorldItems[9] = ItemDefs[0];
+    WorldItems[9].world_position = (Rectangle){ 2 * ITEM_WORLD_SIZE, 12 * ITEM_WORLD_SIZE, ITEM_WORLD_SIZE, ITEM_WORLD_SIZE };
 }
 
 void DrawWorldItems()
@@ -172,7 +274,8 @@ void DrawWorldItems()
     {
         Item item = WorldItems[i];
 
-        if (item.id == 0) {
+        if (item.id == 0)
+        {
             continue;
         }
 
@@ -186,12 +289,15 @@ void PlayerWorldItemCollision(Rectangle player)
     {
         Item item = WorldItems[i];
 
-        if (item.id == 0) {
+        if (item.id == 0)
+        {
             continue;
         }
 
-        if (CheckCollisionRecs(player, item.world_position)) {
-            if (AddInventoryItem(item)) {
+        if (CheckCollisionRecs(player, item.world_position))
+        {
+            if (AddInventoryItem(item))
+            {
                 WorldItems[i].id = 0;
             }
         }
@@ -219,6 +325,19 @@ int main(void)
     Rectangle splitScreenRect = { 0.0f, 0.0f, (float)screenCamera1.texture.width, (float)-screenCamera1.texture.height };
 
     SetTargetFPS(60);
+
+    TextFont = LoadFont("data/font/Rushfordclean.otf");
+
+    if (!IsFontValid(TextFont)) {
+        printf("Font could not be loaded\n");
+        CloseWindow();
+        exit(-2);
+    }
+
+    GuiSetFont(TextFont);
+    GuiSetStyle(DEFAULT, TEXT_SIZE, 20);
+    /*GuiSetStyle(DEFAULT, TEXT_WRAP_MODE, TEXT_WRAP_NONE);
+    GuiSetStyle(DEFAULT, TEXT_LINE_SPACING, 10);*/
 
     SetupInitialItems();
     SpawnItemsInWorld();
@@ -295,6 +414,7 @@ int main(void)
         DrawTextureRec(screenCamera1.texture, splitScreenRect, (Vector2) { 0, 0 }, WHITE);
 
         DrawInventory(screenWidth / 2, screenWidth / 2, screenHeight);
+        DrawEquipment(screenWidth / 2, screenWidth / 2, screenHeight);
 
         DrawRectangle(screenWidth / 2 - 2, 0, 4, screenHeight, (Color) {12, 24, 12, 255});
         
